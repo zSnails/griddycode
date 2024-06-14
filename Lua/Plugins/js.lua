@@ -1,6 +1,7 @@
 highlight("var", "reserved")
 highlight("const", "reserved")
 highlight("new", "reserved")
+highlight("let", "reserved")
 
 highlight("while", "reserved")
 highlight("for", "reserved")
@@ -32,6 +33,7 @@ highlight("throw", "reserved")
 highlight("continue", "reserved")
 highlight("break", "reserved")
 highlight("yield", "reserved")
+highlight("constructor", "reserved")
 
 highlight("instanceof", "reserved")
 highlight("typeof", "reserved")
@@ -132,8 +134,8 @@ function detect_variables(content)
         "module",
         "exports"
     }
+    
     local lines = content:gmatch("[^\r\n]+")
-
     for line in lines do
         if trim(line):find("^let ") or trim(line):find("^var ") or trim(line):find("^const ") then
             local parts = splitstr(line, "=")

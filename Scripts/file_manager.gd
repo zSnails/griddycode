@@ -20,16 +20,32 @@ func _ready():
 		DiscordSDK.large_image = "griddycode" # Image key from "Art Assets"
 		DiscordSDK.large_image_text = "https://github.com/face-hh/griddycode"
 		DiscordSDK.start_timestamp = int(Time.get_unix_time_from_system())
-
-	if OS.get_name() == "Windows":
+	var running_on_gaming_os = OS.get_name() == "Windows"
+	if running_on_gaming_os:
 		current_dir = "C:/"
 
 	var args = OS.get_cmdline_args()
 	var is_debug = OS.is_debug_build()
 	var path = []
 
-	OS.execute("pwd", [], path)
+	# in order to be compatible with the gayming OS...
+	var pwd_cmd = "pwd"
+	# I didn't know that godot doesn't execute
+	# commands within batch on Windows...
+	var exec_args = []
 
+	if running_on_gaming_os:
+		# running "cd" (in batch) without any args will only print the path
+		pwd_cmd = "cmd.exe"
+		exec_args.append("/C")
+		exec_args.append("cd")
+
+	OS.execute(pwd_cmd, exec_args, path)
+
+	if running_on_gaming_os:
+		# EWW GROSS
+		# why are we still using CRLF?
+		path[0] = path[0].replace("\r", "")
 	path = path[0].replace("\n", "")
 
 	if args.size() > 0:
@@ -103,7 +119,7 @@ func warn(notice: String) -> void:
 
 	node.set_notice(notice)
 
-	get_tree().create_timer(3).timeout.connect(func():
+	get_tree().create_timer(5).timeout.connect(func():
 		node.queue_free()
 	)
 
@@ -126,15 +142,20 @@ func list_themes() -> Array:
 
 	return curated;
 
+func get_property_value(settings: Array) -> Array:
+	var out := []
+	for setting in settings:
+		out.append({ "property": setting.property, "value": setting.value })
+	return out
+
 func _notification(what):
 	if what == NOTIFICATION_WM_CLOSE_REQUEST:
 		var save_dict = {
 			"current_file": current_file,
 			"current_dir": current_dir,
-			"settings": LuaSingleton.settings,
+			"settings": get_property_value(LuaSingleton.settings),
 			"theme": LuaSingleton.theme
 		}
-
 
 		save_data(save_dict)
 		Fs.save(current_file, Code.text)
@@ -175,7 +196,6 @@ func load_game(cli: bool = false):
 		LuaSingleton.theme = node_data["theme"]
 
 		var settings = node_data["settings"]
-		var new_settings = []
 
 		for dic: Dictionary in settings:
 			LuaSingleton.handle_internal_setting_change(dic.property, dic.value)
@@ -186,14 +206,8 @@ func load_game(cli: bool = false):
 				print("WARNING: Omitted setting \"%s\" due to finding operation failing." % dic.property)
 				return
 
-			LuaSingleton.settings.remove_at(index)
-			new_settings.append(dic)
+			LuaSingleton.settings[index].value = dic.value
 
-		for setting in LuaSingleton.settings:
-			if not new_settings.has(setting):
-				new_settings.append(setting)
-
-		LuaSingleton.settings = new_settings
 		LuaSingleton.on_settings_change.emit()
 
 
